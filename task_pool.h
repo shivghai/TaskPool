@@ -29,7 +29,6 @@ class TaskPool {
 			
 			// get the tuple
 			auto x = pop();
-			std::cout << "POP" << std::endl;
 			auto func = std::get<0>(x);
 			auto args = std::get<1>(x);
 			lock.unlock();
@@ -54,7 +53,6 @@ class TaskPool {
 	{
 		std::lock_guard<std::mutex> guard(d_mutex);
 		d_taskQueue.push({func, args});
-		std::cout << "PUSH" << std::endl;
 		d_cv.notify_one();
 	}
 
