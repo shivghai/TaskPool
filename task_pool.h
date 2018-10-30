@@ -11,59 +11,62 @@ namespace pool {
 template <typename F, typename T>
 class TaskPool {
 	std::mutex d_mutex;
-	std::queue<std::tuple<F, T>> d_taskQueue;
+	std::queue<std::tuple<F*, T*>> d_taskQueue;
 	std::vector<std::thread> threads;
 	std::condition_variable d_cv;
 	bool terminate;
 
-	void start_processing()
+	void startProcessing()
 	{
 		while (!terminate || !d_taskQueue.empty())
 		{
 			std::unique_lock<std::mutex> lock(d_mutex);
 
-			d_cv.wait(lock, [this]() { return !d_taskQueue.empty() || terminate; });
-		// now the given thread has the lock
+			d_cv.wait(lock, [this]() {
+					return !d_taskQueue.empty() || terminate;
+					});
+
 			if (terminate && d_taskQueue.empty())
 				return;
 			
-			// get the tuple
 			auto x = pop();
-			auto func = std::get<0>(x);
-			auto args = std::get<1>(x);
+
+			auto* func = std::get<0>(x);
+			auto* args = std::get<1>(x);
+
 			lock.unlock();
-			func(args);
+			(*func)((*args));
 			d_cv.notify_one();
 		}
 	}
 
 	public:
 
-	int count;
 	TaskPool()
 	{
-		count = 0;
 		terminate = false;
 		threads.resize(std::thread::hardware_concurrency());
 		for (auto & t : threads)
-			t = std::thread([this]() { TaskPool::start_processing(); });
+			t = std::thread([this]() {
+					startProcessing();
+					});
 	}
 
-	void push(F func, T args)
+	void push(F& func, T& args)
 	{
 		std::lock_guard<std::mutex> guard(d_mutex);
-		d_taskQueue.push({func, args});
+		d_taskQueue.push({&func, &args});
 		d_cv.notify_one();
 	}
 
-	std::tuple<F, T> pop()
+	std::tuple<F*, T*> pop()
 	{
-		auto x = d_taskQueue.front();
+		auto x = std::move(d_taskQueue.front());
 		d_taskQueue.pop();
 		return x;
 	}
 
-	void join_all()
+	void joinAll()
 	{
 		terminate = true;
 		d_cv.notify_all();
