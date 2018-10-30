@@ -1,1 +1,9 @@
 # TaskPool
+## Usage
+        auto lambda = [](Args & arg) { ... };
+        pool::TaskPool<decltype(lambda), Args> pool;
+        ...
+        pool.push(lambda, arg);
+        ...
+        pool.join_all();
+        ...
