@@ -2,5 +2,4 @@
 
 namespace pool {
 
-
-}
+} // end namespace
